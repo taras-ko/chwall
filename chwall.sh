@@ -15,28 +15,30 @@ beep()
 # Add to favourite
 add2top()
 {
-	f=`readlink -f "$file"`
-	mv -v "$f" $topdir 2>/dev/null | tee -a $logfile && beep
+	cp --parents --verbose -t $topdir "$file" | tee -a $logfile
+	rm "$file" 2>/dev/null
+	beep
 }
 
 trap "add2top" SIGRTMIN
 
 # Skep to next
-skip()
+skip2next()
 {
 	_delay=0
 }
-trap 'skip' SIGUSR1
+trap 'skip2next' SIGUSR1
 
 # Here we delete ugly image
 # and switch to next
-del_cur()
+mv2trash()
 {
-	local _file=`readlink -f "$file"`
-	mv -v "$_file" $trashdir 2>&1 | tee -a $logfile && beep
+	cp --parents --verbose -t $trashdir "$file" | tee -a $logfile
+	rm "$file" 2>/dev/null
+	beep
 	_delay=0
 }
-trap 'del_cur' SIGUSR2
+trap 'mv2trash' SIGUSR2
 
 cleanup()
 {
@@ -71,19 +73,22 @@ else
 fi
 
 targetdir=`readlink -f $targetdir` # Get absolute path for find util
-restdir=${targetdir}/rest
-topdir=${targetdir}/top
-trashdir=${targetdir}/trash
+
+pushd $targetdir
+
+restdir=rest
+topdir=top
+trashdir=trash
 
 for dir in $restdir $topdir $trashdir
 do
 	test -d $dir || mkdir -p $dir
 done
 
-export list=$targetdir/wallpapers.list
+export list=wallpapers.list
 
 if [[ ! -s $list ]]; then
-	find $targetdir \( \
+	find \( \
 		-path "$topdir*" -o \
 		-path "$trashdir*" -o \
 		-path "$restdir*" \) -prune -type f -o \
@@ -104,8 +109,12 @@ while [ $lnum -gt 0 ]; do
 		sleep 1
 	done
 	_delay=$default_delay
-	mv -v "$file" $restdir 2>/dev/null | tee -a $logfile && beep
+	cp --parents --verbose -t $restdir "$file" | tee -a $logfile
+	rm "$file" 2>/dev/null
+	beep
 done
+
+popd
 
 #trap - SIGINT
 trap - USR1
