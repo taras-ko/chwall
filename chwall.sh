@@ -32,7 +32,8 @@ trap 'skip' SIGUSR1
 # and switch to next
 del_cur()
 {
-	rm -fv "$file" | tee -a $logfile && beep
+	local _file=`readlink -f "$file"`
+	mv -v "$_file" $trashdir 2>&1 | tee -a $logfile && beep
 	_delay=0
 }
 trap 'del_cur' SIGUSR2
@@ -72,22 +73,27 @@ fi
 targetdir=`readlink -f $targetdir` # Get absolute path for find util
 restdir=${targetdir}/rest
 topdir=${targetdir}/top
+trashdir=${targetdir}/trash
 
-for dir in $restdir $topdir
+for dir in $restdir $topdir $trashdir
 do
 	test -d $dir || mkdir -p $dir
 done
 
 export list=$targetdir/wallpapers.list
 
-if [[ ! -e $list ]]; then
-	find $targetdir -type f \( -iname '*.jpg' -o -iname '*.png' \) >$list
+if [[ ! -s $list ]]; then
+	find $targetdir \( \
+		-path "$topdir*" -o \
+		-path "$trashdir*" -o \
+		-path "$restdir*" \) -prune -type f -o \
+		-type f \( -iname '*.jpg' -o -iname '*.png' \) >$list
 fi
 
 lnum=`wc -l $list | awk '{ print $1 }'`
 
 while [ $lnum -gt 0 ]; do
-	line=$((RANDOM % lnum))
+	line=$((RANDOM % lnum + 1)) # Random generation from range [1..lnum]
 	# Skip to next image
 	file=`sed -n "${line}p" $list`
 	log -n "${lnum}. "
