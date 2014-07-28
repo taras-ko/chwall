@@ -12,12 +12,33 @@ beep()
 	echo -ne '\a'
 }
 
+transfer_image()
+{
+	local src="$1"
+	local src_dir="`dirname \"$src\"`"
+	local dest="$2"
+	local dest_dir="$dest/$src_dir"
+
+	if [[ $transfer_flag == "hard" ]]; then
+		cp --parents --verbose -t $dest "$src" | tee -a $logfile
+		rm "$file" 2>/dev/null
+	else # "soft" transfer
+		local abs_src="`readlink -f \"$src\"`"
+
+		if [[ ! -e "$dest_dir" ]]; then
+			mkdir -p "$dest_dir"
+		fi
+
+		ln -sv "$abs_src" "$dest_dir" | tee -a $logfile
+	fi
+
+	beep
+}
+
 # Add to favourite
 add2top()
 {
-	cp --parents --verbose -t $topdir "$file" | tee -a $logfile
-	rm "$file" 2>/dev/null
-	beep
+	transfer_image "$file" $topdir
 }
 
 trap "add2top" SIGRTMIN
@@ -33,9 +54,7 @@ trap 'skip2next' SIGUSR1
 # and switch to next
 mv2trash()
 {
-	cp --parents --verbose -t $trashdir "$file" | tee -a $logfile
-	rm "$file" 2>/dev/null
-	beep
+	transfer_image "$file" $trashdir
 	_delay=0
 }
 trap 'mv2trash' SIGUSR2
@@ -89,9 +108,9 @@ export list=wallpapers.list
 
 if [[ ! -s $list ]]; then
 	find \( \
-		-path "$topdir*" -o \
-		-path "$trashdir*" -o \
-		-path "$restdir*" \) -prune -type f -o \
+		-path "*$topdir*" -o \
+		-path "*$trashdir*" -o \
+		-path "*$restdir*" \) -prune -type f -o \
 		-type f \( -iname '*.jpg' -o -iname '*.png' \) >$list
 fi
 
@@ -109,9 +128,7 @@ while [ $lnum -gt 0 ]; do
 		sleep 1
 	done
 	_delay=$default_delay
-	cp --parents --verbose -t $restdir "$file" | tee -a $logfile
-	rm "$file" 2>/dev/null
-	beep
+	transfer_image "$file" $restdir
 done
 
 popd
