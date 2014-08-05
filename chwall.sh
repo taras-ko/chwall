@@ -93,11 +93,11 @@ fi
 
 targetdir=`readlink -f $targetdir` # Get absolute path for find util
 
-pushd $targetdir
+pushd "$targetdir"
 
-restdir=rest
-topdir=top
-trashdir=trash
+restdir=$targetdir/rest
+topdir=$targetdir/top
+trashdir=$targetdir/trash
 
 for dir in $restdir $topdir $trashdir
 do
@@ -121,7 +121,7 @@ while [ $lnum -gt 0 ]; do
 	# Skip to next image
 	file=`sed -n "${line}p" $list`
 	log -n "${lnum}. "
-	feh -d --bg-max "$file"
+	feh --scale-down -Z -d --bg-max "$file"
 	sed -i "${line}d" $list
 	((lnum--))
 	for ((i=1; i<=_delay; i++)); do
